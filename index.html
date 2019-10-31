@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="A simple web app for fetching map tiles from a server and building raster MBTiles files.">
+    <meta name="author" content="Bryan McBride">
+    <title>MBTiles Builder</title>
+    <link href="assets/vendor/bootstrap-4.3.1/css/bootstrap.min.css" rel="stylesheet">
+    <link href="assets/vendor/leaflet-1.5.1/leaflet.css" rel="stylesheet">
+    <link href="assets/vendor/leaflet-locatecontrol-0.67.0/L.Control.Locate.min.css" rel="stylesheet">
+    <link href="assets/vendor/fontawesome-free-5.11.2-web/css/all.min.css" rel="stylesheet">
+    <link href="assets/vendor/leaflet-geoman-2.3.0/leaflet-geoman.css" rel="stylesheet">
+    <link href="assets/css/app.css" rel="stylesheet">
+  </head>
+  <body>
+    <nav class="navbar navbar-expand-md navbar-dark bg-dark fixed-top">
+      <a class="navbar-brand" href="#">MBTiles Builder</a>
+      <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExampleDefault" aria-controls="navbarsExampleDefault" aria-expanded="false" aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+      </button>
+      <div class="collapse navbar-collapse" id="navbarsExampleDefault">
+        <ul class="navbar-nav mr-auto">
+        </ul>
+        <form class="form-inline">
+          <button class="btn btn-danger mr-3" type="button" onclick="clearFeatures();">Clear Features</button>
+          <button class="btn btn-success mr-3" type="button" onclick="fileInput.click();">Import GeoJSON</button>
+          <button class="btn btn-primary" type="button" data-toggle="modal" data-target="#add-layer-modal">New Tile Layer</button>
+        </form>
+      </div>
+    </nav>
+
+    <div class="modal" tabindex="-1" role="dialog" id="add-layer-modal">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">New Tile Layer</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <form id="new-layer-form">
+            <div class="modal-body"> 
+              <div class="form-group">
+                  <label for="layer-name">Name</label>
+                  <input type="text" class="form-control" id="layer-name" required>
+                </div>
+              <div class="form-group">
+                <label for="layer-url">URL</label>
+                <input type="text" class="form-control" id="layer-url" placeholder="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" required>
+                <small class="form-text text-muted">Tile XYZ format, where {s} - optional subdomain (a,b,c), {z} - zoom level, {x} and {y} - tile coordinates.</small>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+              <button type="submit" class="btn btn-primary">Add Layer</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <main role="main" class="container-fluid">
+      <div class="row">
+        <div id="map" class="col-8"></div>
+        <div class="col sidebar">
+          <form class="my-2" id="metadata-form">
+            <div class="form-group">
+              <label for="metadata-server">Tile Server URL</label>
+              <input type="text" class="form-control" id="metadata-server" value="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.@2xpng" required readonly>
+              <small class="form-text text-muted">Tile XYZ format, where {s} - optional subdomain (a,b,c), {z} - zoom level, {x} and {y} - tile coordinates.</small>
+            </div>
+            <div class="form-group">
+              <label for="metadata-bounds">Bounds</label>
+              <input type="text" class="form-control" id="metadata-bounds" placeholder="automatically calculated from features" required>
+            </div>
+            <div class="form-row">
+              <div class="form-group col-md-4">
+                <label for="metadata-minzoom">Min Zoom</label>
+                <input type="number" class="form-control" id="metadata-minzoom" min="0" max="22" step="1" value="15" onchange="updateTileCount();" required>
+              </div>
+              <div class="form-group col-md-4">
+                <label for="metadata-maxzoom">Max Zoom</label>
+                <input type="number" class="form-control" id="metadata-maxzoom" min="0" max="22" step="1" value="17" onchange="updateTileCount();" required>
+              </div>
+              <div class="form-group col-md-4">
+                  <label for="currentzoom">Current Zoom</label>
+                  <input type="number" class="form-control" id="currentzoom" disabled>
+                </div>
+            </div>
+            <div class="form-row">
+              <div class="form-group col-md-4">
+                <label for="metadata-format">Format</label>
+                <select class="form-control" id="metadata-format" required>
+                  <option selected>png</option>
+                  <option>jpg</option>
+                </select>
+              </div>
+              <div class="form-group col-md-4">
+                <label for="metadata-type">Type</label>
+                <select class="form-control" id="metadata-type" required>
+                  <option selected>Overlay</option>
+                  <option>Basemap</option>
+                </select>
+              </div>
+              <div class="form-group col-md-4">
+                  <label for="tilecount">Tile Count</label>
+                  <input type="text" class="form-control" id="tilecount" disabled>
+              </div>
+            </div>
+            <div class="form-group">
+              <label for="metadata-name">Name</label>
+              <input type="text" class="form-control" id="metadata-name" placeholder="name of the tileset (required)" required>
+            </div>
+            <div class="form-group">
+              <label for="description">Description</label>
+              <textarea class="form-control" id="description" rows="3" placeholder="description of the tileset's content (optional)"></textarea>
+            </div>
+            <div class="form-row">
+              <div class="col-md-8">
+                <button type="submit" class="btn btn-primary">Build MBTiles!</button>
+              </div>
+              <div class="col-md-4 invisible" id="loading">
+                  <div class="spinner-border text-primary" role="status" aria-hidden="true"></div>
+              </div>
+            </div>
+          </form>
+        </div>
+      </div>
+    </main>
+
+    <script src="assets/vendor/jquery-3.4.1/jquery-3.4.1.min.js"></script>
+    <script src="assets/vendor/popper.js-1.15.0/umd/popper.min.js"></script>
+    <script src="assets/vendor/bootstrap-4.3.1/js/bootstrap.min.js"></script>
+    <script src="assets/vendor/leaflet-1.5.1/leaflet.js"></script>
+    <script src="assets/vendor/leaflet-locatecontrol-0.67.0/L.Control.Locate.min.js"></script>
+    <script src="assets/vendor/sql.js-1.0.0/sql.js/sql-wasm.js"></script>
+    <script src="assets/vendor/tile-cover-3.0.2/tile-cover.js"></script>
+    <script src="assets/vendor/leaflet-geoman-2.3.0/leaflet-geoman.min.js"></script>
+    <script src="assets/js/app.js"></script>
+  </body>
+</html>

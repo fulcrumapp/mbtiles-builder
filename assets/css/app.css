@@ -1,0 +1,25 @@
+html {
+  height: 100%;
+}
+body {
+  padding-top: 56px;
+  height: 100%;
+}
+.row, .container-fluid {
+  height: 100%;
+  overflow: hidden;
+}
+.sidebar {
+  height: 100%;
+  overflow: auto;
+}
+.navbar-brand {
+  font-weight: bold;
+}
+.leaflet-control-layers label {
+  margin-bottom: unset;
+}
+#map {
+  height: 100%;
+  width: 100%;
+}
