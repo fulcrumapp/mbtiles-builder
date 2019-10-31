@@ -167,15 +167,14 @@ function fetchTiles(tileLayer, featureLayer, minZoom, maxZoom) {
   db.run('DELETE FROM tiles; DELETE FROM metadata;');
   db.run(`INSERT INTO metadata VALUES ('name', '${$("#metadata-name").val()}'), ('description', '${$("#description").val()}'), ('type', '${$("#metadata-type").val()}'), ('bounds', '${$("#metadata-bounds").val()}'), ('minzoom', ${minZoom}), ('maxzoom', ${maxZoom});`);
   
-  let promises = [];
   let format = "png";
   let tiles = getTilesForLayer(featureLayer, minZoom, maxZoom);
   
-  for (let i = 0; i < tiles.length; i++) {
-    let tile = tiles[i];
+  const tasks = [];
 
-    (function (i, tile) {
-      promises[i] = new Promise(function (resolve, reject) {
+  tiles.forEach(tile => {
+    tasks.push(
+      callback => {
         let data = {
           s: tileLayer._getSubdomain(tile),
           x: tile.x,
@@ -183,32 +182,35 @@ function fetchTiles(tileLayer, featureLayer, minZoom, maxZoom) {
           z: tile.z
         };
         let url = L.Util.template(tileLayer._url, L.Util.extend(data));
-        // fetch(url /*tileLayer.getTileUrl(tile)*/)
-        //   .then(response => response.arrayBuffer())
-        //   .then(image => resolve(saveTile(tile.z, tile.x, tile.y, image, i, tiles.length)));
 
-        fetch(url /*tileLayer.getTileUrl(tile)*/).then(response => {
-          const contentType = response.headers.get("content-type");
-          if (contentType && ((contentType.indexOf("image/png") !== -1) || (contentType.indexOf("image/jpeg") !== -1))) {
-            return response.arrayBuffer().then(image => {
-              if (contentType.indexOf("image/png") !== -1) {
-                format = "png";
-              } else {
-                format = "jpg";
-              }
-              resolve(saveTile(tile.z, tile.x, tile.y, image, i, tiles.length));
-            });
-          } else {
-            return response.text().then(text => {
-              resolve(null);
-            });
-          }
-        });
-      });
-    })(i, tile);
-  }
+        fetch(url)
+          .then(response => {
+            const contentType = response.headers.get("content-type");
 
-  return Promise.all(promises).then(function(values) {
+            if (contentType && ((contentType.indexOf("image/png") !== -1) || (contentType.indexOf("image/jpeg") !== -1))) {
+              response.arrayBuffer().then(image => {
+                if (contentType.indexOf("image/png") !== -1) {
+                  format = "png";
+                } else {
+                  format = "jpg";
+                }
+
+                saveTile(tile.z, tile.x, tile.y, image)
+                callback(null);
+              });
+            } else {
+              callback(null);
+            }
+          });
+      }
+    );
+  });
+
+  async.series(tasks, (error) => {
+    if (error) {
+      return console.log(error);
+    }
+    
     db.run(`INSERT INTO metadata VALUES ('format', '${format}');`);
     $("#metadata-format").val(format);
     $("#loading").addClass("invisible");
