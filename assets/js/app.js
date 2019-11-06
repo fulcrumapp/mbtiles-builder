@@ -129,12 +129,27 @@ $("#metadata-form").submit(function(event) {
   event.preventDefault();
 });
 
-$("#new-layer-form").submit(function(event) {
-  let layer = L.tileLayer($("#layer-url").val());
-  controls.layerCtrl.addBaseLayer(layer, $("#layer-name").val());
+$("#new-wms-form").submit(function(event) {
+  let url = $("#wms-layer-url").val().split("?")[0];
+  let layer = L.tileLayer.wms(url, {
+    layers: $("#wms-layer-layer").val(),
+    format: "image/png",
+    transparent: true
+  });
+  controls.layerCtrl.addBaseLayer(layer, $("#wms-layer-name").val());
   map.removeLayer(findBaseLayer());
   layer.addTo(map);
-  $("#add-layer-modal").modal("hide");
+  $("#new-wms-modal").modal("hide");
+  this.reset();
+  event.preventDefault();
+});
+
+$("#new-xyz-form").submit(function(event) {
+  let layer = L.tileLayer($("#xyz-layer-url").val());
+  controls.layerCtrl.addBaseLayer(layer, $("#xyz-layer-name").val());
+  map.removeLayer(findBaseLayer());
+  layer.addTo(map);
+  $("#new-xyz-modal").modal("hide");
   this.reset();
   event.preventDefault();
 });
@@ -173,6 +188,7 @@ function fetchTiles(tileLayer, featureLayer, minZoom, maxZoom) {
   
   for (let i = 0; i < tiles.length; i++) {
     let tile = tiles[i];
+    let url = null;
 
     (function (i, tile) {
       promises[i] = new Promise(function (resolve, reject) {
@@ -182,12 +198,18 @@ function fetchTiles(tileLayer, featureLayer, minZoom, maxZoom) {
           y: tile.y,
           z: tile.z
         };
-        let url = L.Util.template(tileLayer._url, L.Util.extend(data));
-        // fetch(url /*tileLayer.getTileUrl(tile)*/)
-        //   .then(response => response.arrayBuffer())
-        //   .then(image => resolve(saveTile(tile.z, tile.x, tile.y, image, i, tiles.length)));
 
-        fetch(url /*tileLayer.getTileUrl(tile)*/).then(response => {
+        if (tileLayer instanceof L.TileLayer.WMS) {
+          let bbox = tilebelt.tileToBBOX([tile.x,tile.y,tile.z]);
+          let min = L.Projection.SphericalMercator.project(L.latLng(bbox[1], bbox[0]));
+          let max = L.Projection.SphericalMercator.project(L.latLng(bbox[3], bbox[2]));
+          let projected_bbox = [min.x, min.y, max.x, max.y];
+          url = tileLayer._url + L.Util.getParamString(tileLayer.wmsParams) + "&bbox=" + projected_bbox;
+        } else {
+          url = L.Util.template(tileLayer._url, L.Util.extend(data));
+        }
+
+        fetch(url).then(response => {
           const contentType = response.headers.get("content-type");
           if (contentType && ((contentType.indexOf("image/png") !== -1) || (contentType.indexOf("image/jpeg") !== -1))) {
             return response.arrayBuffer().then(image => {
@@ -255,6 +277,27 @@ function saveTile(z, x, y, image, number, count) {
     x: x,
     y: (Math.pow(2, z) - y - 1),
     z: z
+  }
+}
+
+function getWMSLayers(input) {
+  if (input) {
+    let url = new URL(input);
+    url.searchParams.set("service", "WMS");
+    url.searchParams.set("request", "GetCapabilities");
+    $.ajax({
+      type: "GET",
+      url: url,
+      dataType: "xml",
+      success: function (xml) {
+        $("#wms-layer-layer").find("option:not(:first)").remove();
+        $(xml).find("Layer").each(function () {
+          if ($(this).attr("queryable")) {
+            $("#wms-layer-layer").append("<option value='" + $(this).children("Name").text() + "'>" + $(this).children("Name").text() + "</option>");
+          }
+        });
+      }
+    });
   }
 }
 

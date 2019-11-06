@@ -25,12 +25,49 @@
         <form class="form-inline">
           <button class="btn btn-danger mr-3" type="button" onclick="clearFeatures();">Clear Features</button>
           <button class="btn btn-success mr-3" type="button" onclick="fileInput.click();">Import GeoJSON</button>
-          <button class="btn btn-primary" type="button" data-toggle="modal" data-target="#add-layer-modal">New Tile Layer</button>
+          <button class="btn btn-primary mr-3" type="button" data-toggle="modal" data-target="#new-wms-modal">New WMS Layer</button>
+          <button class="btn btn-primary" type="button" data-toggle="modal" data-target="#new-xyz-modal">New Tile Layer</button>
         </form>
       </div>
     </nav>
 
-    <div class="modal" tabindex="-1" role="dialog" id="add-layer-modal">
+    <div class="modal" tabindex="-1" role="dialog" id="new-wms-modal">
+      <div class="modal-dialog" role="document">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">New WMS Layer</h5>
+            <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+              <span aria-hidden="true">&times;</span>
+            </button>
+          </div>
+          <form id="new-wms-form">
+            <div class="modal-body"> 
+              <div class="form-group">
+                  <label for="wms-layer-name">Name</label>
+                  <input type="text" class="form-control" id="wms-layer-name" required>
+                </div>
+              <div class="form-group">
+                <label for="wms-layer-url">URL</label>
+                <input type="text" class="form-control" id="wms-layer-url" onkeyup="getWMSLayers(this.value);" required>
+                <small class="form-text text-muted" style="word-wrap: break-word;">https://basemap.nationalmap.gov/arcgis/services/USGSImageryOnly/MapServer/WMSServer</small>
+              </div>
+              <div class="form-group">
+                <label for="wms-layer-layer">Layer</label>
+                <select class="form-control" id="wms-layer-layer" required>
+                  <option selected disabled>Select a layer</option>
+                </select>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-dismiss="modal">Close</button>
+              <button type="submit" class="btn btn-primary">Add Layer</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <div class="modal" tabindex="-1" role="dialog" id="new-xyz-modal">
       <div class="modal-dialog" role="document">
         <div class="modal-content">
           <div class="modal-header">
@@ -39,15 +76,15 @@
               <span aria-hidden="true">&times;</span>
             </button>
           </div>
-          <form id="new-layer-form">
+          <form id="new-xyz-form">
             <div class="modal-body"> 
               <div class="form-group">
-                  <label for="layer-name">Name</label>
-                  <input type="text" class="form-control" id="layer-name" required>
+                  <label for="xyz-layer-name">Name</label>
+                  <input type="text" class="form-control" id="xyz-layer-name" required>
                 </div>
               <div class="form-group">
-                <label for="layer-url">URL</label>
-                <input type="text" class="form-control" id="layer-url" placeholder="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" required>
+                <label for="xyz-layer-url">URL</label>
+                <input type="text" class="form-control" id="xyz-layer-url" placeholder="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" required>
                 <small class="form-text text-muted">Tile XYZ format, where {s} - optional subdomain (a,b,c), {z} - zoom level, {x} and {y} - tile coordinates.</small>
               </div>
             </div>
@@ -66,13 +103,12 @@
         <div class="col sidebar">
           <form class="my-2" id="metadata-form">
             <div class="form-group">
-              <label for="metadata-server">Tile Server URL</label>
+              <label for="metadata-server">Server URL</label>
               <input type="text" class="form-control" id="metadata-server" value="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.@2xpng" required readonly>
-              <small class="form-text text-muted">Tile XYZ format, where {s} - optional subdomain (a,b,c), {z} - zoom level, {x} and {y} - tile coordinates.</small>
             </div>
             <div class="form-group">
               <label for="metadata-bounds">Bounds</label>
-              <input type="text" class="form-control" id="metadata-bounds" placeholder="automatically calculated from features" required>
+              <input type="text" class="form-control" id="metadata-bounds" placeholder="draw or import features to calculate bounds" required>
             </div>
             <div class="form-row">
               <div class="form-group col-md-4">
@@ -135,6 +171,7 @@
     <script src="assets/vendor/leaflet-1.5.1/leaflet.js"></script>
     <script src="assets/vendor/leaflet-locatecontrol-0.67.0/L.Control.Locate.min.js"></script>
     <script src="assets/vendor/sql.js-1.0.0/sql.js/sql-wasm.js"></script>
+    <script src="assets/vendor/tilebelt-1.0.1/tilebelt.js"></script>
     <script src="assets/vendor/tile-cover-3.0.2/tile-cover.js"></script>
     <script src="assets/vendor/leaflet-geoman-2.3.0/leaflet-geoman.min.js"></script>
     <script src="assets/js/app.js"></script>
