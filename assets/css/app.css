@@ -23,3 +23,11 @@ body {
   height: 100%;
   width: 100%;
 }
+@media (max-width: 576px) {
+  #map {
+    height: 55%;
+  }
+  .sidebar {
+    height: 45%;
+  }
+}
